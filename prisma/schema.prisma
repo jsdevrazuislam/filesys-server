@@ -1,0 +1,102 @@
+generator client {
+    provider   = "prisma-client-js"
+    engineType = "library"
+}
+
+datasource db {
+    provider = "postgresql"
+}
+
+enum Role {
+    USER
+    ADMIN
+}
+
+model User {
+    id               String   @id @default(uuid())
+    name             String
+    email            String   @unique
+    password         String
+    role             Role     @default(USER)
+    stripeCustomerId String?  @unique
+    isVerified       Boolean  @default(false)
+    createdAt        DateTime @default(now())
+    updatedAt        DateTime @updatedAt
+
+    folders             Folder[]
+    files               File[]
+    subscriptionHistory UserSubscriptionHistory[]
+
+    @@index([email])
+}
+
+model SubscriptionPackage {
+    id             String   @id @default(uuid())
+    name           String   @unique
+    stripePriceId  String?  @unique
+    maxFolders     Int      @default(10)
+    maxNesting     Int      @default(3)
+    allowedTypes   String[] // e.g. ["image/jpeg", "application/pdf"]
+    maxFileSize    BigInt // in bytes
+    storageLimit   BigInt   @default(0) // total allowed storage in bytes
+    totalFiles     Int      @default(100)
+    filesPerFolder Int      @default(20)
+    price          Float    @default(0.0)
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+
+    subscriptions UserSubscriptionHistory[]
+}
+
+model UserSubscriptionHistory {
+    id                   String    @id @default(uuid())
+    userId               String
+    packageId            String
+    stripeSubscriptionId String?   @unique
+    paymentStatus        String    @default("pending") // pending, active, cancelled, failed
+    startDate            DateTime  @default(now())
+    endDate              DateTime?
+    isActive             Boolean   @default(true)
+
+    user    User                @relation(fields: [userId], references: [id])
+    package SubscriptionPackage @relation(fields: [packageId], references: [id])
+
+    @@index([userId, isActive])
+}
+
+model Folder {
+    id         String   @id @default(uuid())
+    name       String
+    userId     String
+    parentId   String?
+    depthLevel Int      @default(0)
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+
+    user     User     @relation(fields: [userId], references: [id])
+    parent   Folder?  @relation("SubFolders", fields: [parentId], references: [id])
+    children Folder[] @relation("SubFolders")
+    files    File[]
+
+    @@index([userId])
+    @@index([parentId])
+    @@index([userId, parentId])
+}
+
+model File {
+    id        String   @id @default(uuid())
+    name      String
+    size      BigInt
+    mimeType  String
+    userId    String
+    folderId  String?
+    s3Key     String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    user   User    @relation(fields: [userId], references: [id])
+    folder Folder? @relation(fields: [folderId], references: [id])
+
+    @@index([userId])
+    @@index([folderId])
+}
