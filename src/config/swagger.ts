@@ -90,7 +90,10 @@ const options: swaggerJsdoc.Options = {
       },
     ],
   },
-  apis: ['./src/app.ts', './src/modules/**/*.ts'], // Look for annotations in app.ts and modules
+  apis:
+    process.env.NODE_ENV === 'production'
+      ? ['./dist/app.js', './dist/modules/**/*.js']
+      : ['./src/app.ts', './src/modules/**/*.ts'],
 };
 
 const swaggerSpec = swaggerJsdoc(options);

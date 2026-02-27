@@ -27,8 +27,17 @@ interface BigIntWithToJSON {
 app.use(helmet());
 app.use(
   cors({
-    origin: [env.CLIENT_URL],
+    origin: (origin, callback) => {
+      const allowedOrigins = env.CLIENT_URL.split(',').map((o) => o.trim());
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   }),
 );
 app.use(
