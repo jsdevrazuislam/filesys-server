@@ -1,9 +1,13 @@
 import express from 'express';
-import { FileController } from './file.controller';
+
 import { auth } from '../../middlewares/authMiddleware';
+import {
+  attachSubscription,
+  checkSubscriptionLimit,
+} from '../../middlewares/subscriptionMiddleware';
 import { validateRequest } from '../../middlewares/validateRequest';
+import { FileController } from './file.controller';
 import { renameFileSchema, signedUrlSchema } from './file.validation';
-import { attachSubscription, checkSubscriptionLimit } from '../../middlewares/subscriptionMiddleware';
 
 const router = express.Router();
 
@@ -32,12 +36,12 @@ const router = express.Router();
  *         description: Signed URL generated
  */
 router.post(
-    '/signed-url',
-    auth(),
-    attachSubscription,
-    checkSubscriptionLimit('UPLOAD_FILE'),
-    validateRequest(signedUrlSchema),
-    FileController.getSignedUrl
+  '/signed-url',
+  auth(),
+  attachSubscription,
+  checkSubscriptionLimit('UPLOAD_FILE'),
+  validateRequest(signedUrlSchema),
+  FileController.getSignedUrl,
 );
 
 /**
@@ -66,11 +70,11 @@ router.post(
  *         description: File saved successfully
  */
 router.post(
-    '/confirm',
-    auth(),
-    attachSubscription,
-    checkSubscriptionLimit('UPLOAD_FILE'),
-    FileController.confirmUpload
+  '/confirm',
+  auth(),
+  attachSubscription,
+  checkSubscriptionLimit('UPLOAD_FILE'),
+  FileController.confirmUpload,
 );
 
 /**
@@ -89,11 +93,7 @@ router.post(
  *       200:
  *         description: Files fetched
  */
-router.get(
-    '/',
-    auth(),
-    FileController.listFiles
-);
+router.get('/', auth(), FileController.listFiles);
 
 /**
  * @openapi
@@ -112,11 +112,7 @@ router.get(
  *       200:
  *         description: File fetched
  */
-router.get(
-    '/:id',
-    auth(),
-    FileController.getFile
-);
+router.get('/:id', auth(), FileController.getFile);
 
 /**
  * @openapi
@@ -145,10 +141,10 @@ router.get(
  *         description: File renamed
  */
 router.patch(
-    '/:id',
-    auth(),
-    validateRequest(renameFileSchema),
-    FileController.renameFile
+  '/:id',
+  auth(),
+  validateRequest(renameFileSchema),
+  FileController.renameFile,
 );
 
 /**
@@ -168,11 +164,7 @@ router.patch(
  *       200:
  *         description: File deleted
  */
-router.delete(
-    '/:id',
-    auth(),
-    FileController.deleteFile
-);
+router.delete('/:id', auth(), FileController.deleteFile);
 
 /**
  * @openapi
@@ -191,11 +183,7 @@ router.delete(
  *       200:
  *         description: File view URL generated
  */
-router.get(
-    '/:id/view',
-    auth(),
-    FileController.viewFile
-);
+router.get('/:id/view', auth(), FileController.viewFile);
 
 /**
  * @openapi
@@ -214,10 +202,6 @@ router.get(
  *       200:
  *         description: File download URL generated
  */
-router.get(
-    '/:id/download',
-    auth(),
-    FileController.downloadFile
-);
+router.get('/:id/download', auth(), FileController.downloadFile);
 
 export const FileRoutes = router;

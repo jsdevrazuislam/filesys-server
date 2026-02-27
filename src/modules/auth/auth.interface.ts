@@ -1,31 +1,31 @@
 import { Role, User } from '@prisma/client';
 
 export interface IRegisterUserDTO {
-    name: string;
-    email: string;
-    password: string;
+  name: string;
+  email: string;
+  password: string;
 }
 
 export interface ILoginUserDTO {
-    email: string;
-    password: string;
+  email: string;
+  password: string;
 }
 
 export interface IForgotPasswordDTO {
-    email: string;
+  email: string;
 }
 
 export interface IAuthResponse {
-    token: string;
-    user: IUserResponse;
+  token: string;
+  user: IUserResponse;
 }
 
 export interface IUserResponse extends Omit<User, 'password'> {
-    subscriptionHistory?: Record<string, unknown>[];
+  subscriptionHistory?: Record<string, unknown>[];
 }
 
 export interface IDecodedUser {
-    id: string;
-    role: Role;
-    email: string;
+  id: string;
+  role: Role;
+  email: string;
 }

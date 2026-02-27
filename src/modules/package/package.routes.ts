@@ -1,9 +1,10 @@
 import express from 'express';
-import { PackageController } from './package.controller';
-import { validateRequest } from '../../middlewares/validateRequest';
-import { createPackageSchema, updatePackageSchema } from './package.validation';
-import { auth, validateRole } from '../../middlewares/authMiddleware';
+
 import { Role } from '../../constants';
+import { auth, validateRole } from '../../middlewares/authMiddleware';
+import { validateRequest } from '../../middlewares/validateRequest';
+import { PackageController } from './package.controller';
+import { createPackageSchema, updatePackageSchema } from './package.validation';
 
 const router = express.Router();
 
@@ -40,11 +41,11 @@ router.get('/', PackageController.getAllPackages);
  *         description: Forbidden
  */
 router.post(
-    '/',
-    auth(),
-    validateRole(Role.ADMIN),
-    validateRequest(createPackageSchema),
-    PackageController.createPackage
+  '/',
+  auth(),
+  validateRole(Role.ADMIN),
+  validateRequest(createPackageSchema),
+  PackageController.createPackage,
 );
 
 /**
@@ -70,11 +71,11 @@ router.post(
  *         description: Package updated
  */
 router.patch(
-    '/:id',
-    auth(),
-    validateRole(Role.ADMIN),
-    validateRequest(updatePackageSchema),
-    PackageController.updatePackage
+  '/:id',
+  auth(),
+  validateRole(Role.ADMIN),
+  validateRequest(updatePackageSchema),
+  PackageController.updatePackage,
 );
 
 /**
@@ -95,10 +96,10 @@ router.patch(
  *         description: Package deleted
  */
 router.delete(
-    '/:id',
-    auth(),
-    validateRole(Role.ADMIN),
-    PackageController.deletePackage
+  '/:id',
+  auth(),
+  validateRole(Role.ADMIN),
+  PackageController.deletePackage,
 );
 
 /**
@@ -122,11 +123,7 @@ router.delete(
  *       200:
  *         description: Subscribed successfully
  */
-router.post(
-    '/subscribe',
-    auth(),
-    PackageController.subscribe
-);
+router.post('/subscribe', auth(), PackageController.subscribe);
 
 /**
  * @openapi
@@ -140,10 +137,6 @@ router.post(
  *       200:
  *         description: History fetched
  */
-router.get(
-    '/history',
-    auth(),
-    PackageController.getHistory
-);
+router.get('/history', auth(), PackageController.getHistory);
 
 export const PackageRoutes = router;

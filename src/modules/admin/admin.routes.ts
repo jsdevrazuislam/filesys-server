@@ -1,7 +1,8 @@
 import express from 'express';
-import { AdminController } from './admin.controller';
-import { auth, validateRole } from '../../middlewares/authMiddleware';
+
 import { Role } from '../../constants';
+import { auth, validateRole } from '../../middlewares/authMiddleware';
+import { AdminController } from './admin.controller';
 
 const router = express.Router();
 

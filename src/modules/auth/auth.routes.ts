@@ -1,8 +1,13 @@
 import express from 'express';
-import { AuthController } from './auth.controller';
-import { validateRequest } from '../../middlewares/validateRequest';
-import { registerSchema, loginSchema, passwordResetSchema } from './auth.validation';
+
 import { auth } from '../../middlewares/authMiddleware';
+import { validateRequest } from '../../middlewares/validateRequest';
+import { AuthController } from './auth.controller';
+import {
+  loginSchema,
+  passwordResetSchema,
+  registerSchema,
+} from './auth.validation';
 
 const router = express.Router();
 
@@ -29,9 +34,9 @@ const router = express.Router();
  *         description: Bad request
  */
 router.post(
-    '/register',
-    validateRequest(registerSchema),
-    AuthController.register
+  '/register',
+  validateRequest(registerSchema),
+  AuthController.register,
 );
 
 /**
@@ -56,11 +61,7 @@ router.post(
  *       401:
  *         description: Unauthorized
  */
-router.post(
-    '/login',
-    validateRequest(loginSchema),
-    AuthController.login
-);
+router.post('/login', validateRequest(loginSchema), AuthController.login);
 
 /**
  * @openapi
@@ -72,10 +73,7 @@ router.post(
  *       200:
  *         description: Logged out successfully
  */
-router.post(
-    '/logout',
-    AuthController.logout
-);
+router.post('/logout', AuthController.logout);
 
 /**
  * @openapi
@@ -97,20 +95,14 @@ router.post(
  *         description: Instructions sent to email
  */
 router.post(
-    '/reset-password',
-    validateRequest(passwordResetSchema),
-    AuthController.resetPassword
+  '/reset-password',
+  validateRequest(passwordResetSchema),
+  AuthController.resetPassword,
 );
 
-router.post(
-    '/complete-reset-password',
-    AuthController.completePasswordReset
-);
+router.post('/complete-reset-password', AuthController.completePasswordReset);
 
-router.get(
-    '/verify-email',
-    AuthController.verifyEmail
-);
+router.get('/verify-email', AuthController.verifyEmail);
 
 /**
  * @openapi
@@ -125,9 +117,9 @@ router.get(
  *         description: User profile fetched
  */
 router.get(
-    '/me',
-    auth({ skipVerification: true }),
-    AuthController.getCurrentUser
+  '/me',
+  auth({ skipVerification: true }),
+  AuthController.getCurrentUser,
 );
 
 export const AuthRoutes = router;

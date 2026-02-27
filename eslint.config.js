@@ -21,7 +21,14 @@ module.exports = [
         rules: {
             ...typescriptEslint.configs.recommended.rules,
             '@typescript-eslint/no-explicit-any': 'error',
-            '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+            '@typescript-eslint/no-unused-vars': [
+                'error',
+                {
+                    argsIgnorePattern: '^_',
+                    varsIgnorePattern: '^_',
+                    caughtErrorsIgnorePattern: '^_',
+                },
+            ],
             'prettier/prettier': 'error',
             'no-console': 'error',
             'simple-import-sort/imports': 'error',

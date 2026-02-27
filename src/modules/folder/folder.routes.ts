@@ -1,9 +1,13 @@
 import express from 'express';
-import { FolderController } from './folder.controller';
-import { validateRequest } from '../../middlewares/validateRequest';
-import { createFolderSchema, renameFolderSchema } from './folder.validation';
+
 import { auth } from '../../middlewares/authMiddleware';
-import { attachSubscription, checkSubscriptionLimit } from '../../middlewares/subscriptionMiddleware';
+import {
+  attachSubscription,
+  checkSubscriptionLimit,
+} from '../../middlewares/subscriptionMiddleware';
+import { validateRequest } from '../../middlewares/validateRequest';
+import { FolderController } from './folder.controller';
+import { createFolderSchema, renameFolderSchema } from './folder.validation';
 
 const router = express.Router();
 
@@ -30,12 +34,12 @@ const router = express.Router();
  *         description: Folder created
  */
 router.post(
-    '/',
-    auth(),
-    attachSubscription,
-    checkSubscriptionLimit('CREATE_FOLDER'),
-    validateRequest(createFolderSchema),
-    FolderController.createFolder
+  '/',
+  auth(),
+  attachSubscription,
+  checkSubscriptionLimit('CREATE_FOLDER'),
+  validateRequest(createFolderSchema),
+  FolderController.createFolder,
 );
 
 /**
@@ -54,11 +58,7 @@ router.post(
  *       200:
  *         description: Folders fetched
  */
-router.get(
-    '/',
-    auth(),
-    FolderController.listFolders
-);
+router.get('/', auth(), FolderController.listFolders);
 
 /**
  * @openapi
@@ -72,11 +72,7 @@ router.get(
  *       200:
  *         description: Hierarchy fetched
  */
-router.get(
-    '/hierarchy',
-    auth(),
-    FolderController.getHierarchy
-);
+router.get('/hierarchy', auth(), FolderController.getHierarchy);
 
 /**
  * @openapi
@@ -105,10 +101,10 @@ router.get(
  *         description: Folder renamed
  */
 router.patch(
-    '/:id',
-    auth(),
-    validateRequest(renameFolderSchema),
-    FolderController.renameFolder
+  '/:id',
+  auth(),
+  validateRequest(renameFolderSchema),
+  FolderController.renameFolder,
 );
 
 /**
@@ -128,10 +124,6 @@ router.patch(
  *       200:
  *         description: Folder deleted
  */
-router.delete(
-    '/:id',
-    auth(),
-    FolderController.deleteFolder
-);
+router.delete('/:id', auth(), FolderController.deleteFolder);
 
 export const FolderRoutes = router;
