@@ -19,6 +19,7 @@ const envSchema = z.object({
   CLOUD_NAME: z.string().min(1),
   CLIENT_URL: z.string().min(1),
   JWT_REFRESH_SECRET: z.string().min(1),
+  JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
   SMTP_TOKEN: z.string().min(1),
   STRIPE_SECRET_KEY: z.string().min(1),
   STRIPE_WEBHOOK_SECRET: z.string().min(1),

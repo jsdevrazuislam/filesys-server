@@ -1,3 +1,4 @@
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express, { Application, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
@@ -47,6 +48,7 @@ app.use(
   }),
 );
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Centralized Logging with Morgan & Winston
 const morganFormat = env.NODE_ENV === 'production' ? 'combined' : 'dev';

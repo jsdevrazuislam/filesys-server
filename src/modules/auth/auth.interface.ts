@@ -17,6 +17,7 @@ export interface IForgotPasswordDTO {
 
 export interface IAuthResponse {
   token: string;
+  refreshToken?: string;
   user: IUserResponse;
 }
 

@@ -101,6 +101,7 @@ router.post(
 );
 
 router.post('/complete-reset-password', AuthController.completePasswordReset);
+router.post('/refresh', AuthController.refreshToken);
 
 router.get('/verify-email', AuthController.verifyEmail);
 

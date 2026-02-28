@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 
+import { AppError } from '../../utils/AppError';
 import { sendResponse } from '../../utils/sendResponse';
 import {
   IAuthResponse,
@@ -46,6 +47,42 @@ export class AuthController {
     try {
       const result = await AuthService.login(req.body as ILoginUserDTO);
 
+      // Set session tokens in HTTP-Only cookies
+      res.cookie('access_token', result.token, {
+        httpOnly: true,
+        secure: true, // Required for SameSite=None
+        sameSite: 'none',
+        path: '/',
+        maxAge: 24 * 60 * 60 * 1000, // 1 day
+      });
+
+      if (result.refreshToken) {
+        res.cookie('refresh_token', result.refreshToken, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'none',
+          path: '/',
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+      }
+
+      // Set non-sensitive hints for the frontend (readable by js-cookie)
+      res.cookie('has_session', 'true', {
+        httpOnly: false,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      res.cookie('user_role', result.user.role, {
+        httpOnly: false,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
       sendResponse<IAuthResponse>(res, {
         statusCode: 200,
         success: true,
@@ -67,12 +104,75 @@ export class AuthController {
   ): Promise<void> => {
     try {
       res.clearCookie('access_token');
+      res.clearCookie('refresh_token');
       res.clearCookie('user_role');
       res.clearCookie('has_session');
       sendResponse(res, {
         statusCode: 200,
         success: true,
         message: 'Logged out successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Handle token refresh.
+   */
+  static refreshToken = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const refreshToken = req.cookies.refresh_token;
+
+      if (!refreshToken) {
+        throw new AppError('Refresh token missing', 401);
+      }
+
+      const result = await AuthService.refreshAccessToken(refreshToken);
+
+      // Set session tokens in HTTP-Only cookies
+      res.cookie('access_token', result.accessToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+        maxAge: 24 * 60 * 60 * 1000,
+      });
+
+      res.cookie('refresh_token', result.refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      // Update hints (roles might have changed, though unlikely here)
+      res.cookie('has_session', 'true', {
+        httpOnly: false,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      res.cookie('user_role', result.role, {
+        httpOnly: false,
+        secure: true,
+        sameSite: 'none',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      sendResponse(res, {
+        statusCode: 200,
+        success: true,
+        message: 'Token refreshed successfully',
+        data: null,
       });
     } catch (error) {
       next(error);

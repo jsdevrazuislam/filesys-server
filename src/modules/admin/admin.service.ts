@@ -82,7 +82,6 @@ export class AdminService {
           subscriptionHistory: {
             where: { isActive: true },
             include: { package: true },
-            take: 1,
           },
           files: {
             select: { size: true },
@@ -93,19 +92,25 @@ export class AdminService {
     ]);
 
     const data: IUserOverview[] = users.map((user) => {
+      // Calculate total storage usage from all files
       const usedStorage = user.files.reduce(
-        (acc, file) => acc + file.size,
+        (acc, file) => acc + BigInt(file.size),
         BigInt(0),
       );
+
+      // Get the name of the first active subscription package
+      const activeSubscription = user.subscriptionHistory[0];
+      const planName = activeSubscription?.package.name || 'FREE';
+
       return {
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
-        status: user.isVerified ? 'ACTIVE' : 'INACTIVE', // Using isVerified as status for now
+        status: user.isVerified ? 'ACTIVE' : 'INACTIVE',
         createdAt: user.createdAt,
         storageUsage: usedStorage.toString(),
-        planName: user.subscriptionHistory[0]?.package.name || 'FREE',
+        planName,
       };
     });
 

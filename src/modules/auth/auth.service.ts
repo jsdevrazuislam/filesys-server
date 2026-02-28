@@ -9,6 +9,7 @@ import logger from '../../utils/logger';
 import { EmailService } from '../email/email.service';
 import {
   IAuthResponse,
+  IDecodedUser,
   ILoginUserDTO,
   IRegisterUserDTO,
   IUserResponse,
@@ -67,7 +68,12 @@ export class AuthService {
     }
 
     // Send Verification Email
-    const verificationToken = this.generateToken(user.id, user.role, '1h');
+    const verificationToken = this.generateToken(
+      user.id,
+      user.role,
+      env.JWT_ACCESS_SECRET,
+      '1h',
+    );
     await EmailService.sendEmail(
       'Verify Your Email',
       user.email,
@@ -115,15 +121,22 @@ export class AuthService {
       throw new AppError('Invalid email or password', 401);
     }
 
-    // Generate JWT
-    const token = this.generateToken(
+    // Generate JWTs
+    const accessToken = this.generateToken(
       user.id,
       user.role,
+      env.JWT_ACCESS_SECRET,
       env.JWT_ACCESS_EXPIRES_IN,
+    );
+    const refreshToken = this.generateToken(
+      user.id,
+      user.role,
+      env.JWT_REFRESH_SECRET,
+      env.JWT_REFRESH_EXPIRES_IN,
     );
 
     const { password: _password, ...userWithoutPassword } = user;
-    return { token, user: userWithoutPassword };
+    return { token: accessToken, refreshToken, user: userWithoutPassword };
   }
 
   /**
@@ -136,7 +149,12 @@ export class AuthService {
       throw new AppError('No user found with that email address', 404);
     }
 
-    const resetToken = this.generateToken(user.id, user.role, '15m');
+    const resetToken = this.generateToken(
+      user.id,
+      user.role,
+      env.JWT_ACCESS_SECRET,
+      '15m',
+    );
 
     await EmailService.sendEmail(
       'Password Reset Request',
@@ -171,13 +189,57 @@ export class AuthService {
   }
 
   /**
+   * Refreshes the access token using a valid refresh token.
+   */
+  static async refreshAccessToken(refreshToken: string): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    role: Role;
+  }> {
+    try {
+      const decoded = jwt.verify(
+        refreshToken,
+        env.JWT_REFRESH_SECRET,
+      ) as IDecodedUser;
+
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+      });
+
+      if (!user || !user.isVerified) {
+        throw new AppError('User not found or not verified', 401);
+      }
+
+      const newAccessToken = this.generateToken(
+        user.id,
+        user.role,
+        env.JWT_ACCESS_SECRET,
+        env.JWT_ACCESS_EXPIRES_IN,
+      );
+
+      const newRefreshToken = this.generateToken(
+        user.id,
+        user.role,
+        env.JWT_REFRESH_SECRET,
+        env.JWT_REFRESH_EXPIRES_IN,
+      );
+
+      return {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        role: user.role,
+      };
+    } catch (_error) {
+      throw new AppError('Invalid or expired refresh token', 401);
+    }
+  }
+
+  /**
    * Verifies user email with token.
    */
   static async verifyEmail(token: string): Promise<void> {
     try {
-      const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as {
-        id: string;
-      };
+      const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as IDecodedUser;
       const user = await prisma.user.findUnique({ where: { id: decoded.id } });
 
       if (!user) {
@@ -205,9 +267,7 @@ export class AuthService {
     newPassword: string,
   ): Promise<void> {
     try {
-      const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as {
-        id: string;
-      };
+      const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as IDecodedUser;
       const hashedPassword = await bcrypt.hash(newPassword, 12);
 
       await prisma.user.update({
@@ -225,9 +285,10 @@ export class AuthService {
   private static generateToken(
     id: string,
     role: string,
+    secret: string,
     expiresIn: string,
   ): string {
-    return jwt.sign({ id, role }, env.JWT_ACCESS_SECRET, {
+    return jwt.sign({ id, role }, secret, {
       expiresIn: expiresIn as jwt.SignOptions['expiresIn'],
     });
   }
