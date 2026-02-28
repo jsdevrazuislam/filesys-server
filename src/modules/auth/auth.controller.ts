@@ -49,8 +49,8 @@ export class AuthController {
       // Set session token in HTTP-Only cookie
       res.cookie('access_token', result.token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: true, // Always secure for SameSite=None
+        sameSite: 'none',
         path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
@@ -58,8 +58,8 @@ export class AuthController {
       // Set role hint (NON-HttpOnly) for Middleware/Frontend routing
       res.cookie('user_role', result.user.role, {
         httpOnly: false, // Accessible by JS/Middleware
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: true,
+        sameSite: 'none',
         path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
@@ -67,8 +67,8 @@ export class AuthController {
       // Set session hint (NON-HttpOnly) for API optimization
       res.cookie('has_session', 'true', {
         httpOnly: false, // Accessible by JS
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: true,
+        sameSite: 'none',
         path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
