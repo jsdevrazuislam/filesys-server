@@ -52,22 +52,25 @@ export class AuthController {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000,
+        domain: '.vercel.app',
       });
 
       // Set role hint (NON-HttpOnly) for Middleware/Frontend routing
       res.cookie('user_role', result.user.role, {
-        httpOnly: false, // Accessible by JS/Middleware
+        httpOnly: true, // Accessible by JS/Middleware
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000,
+        domain: '.vercel.app',
       });
 
       // Set session hint (NON-HttpOnly) for API optimization
       res.cookie('has_session', 'true', {
-        httpOnly: false,
+        httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000,
+        domain: '.vercel.app',
       });
 
       sendResponse<IAuthResponse>(res, {
