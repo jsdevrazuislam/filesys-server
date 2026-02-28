@@ -46,33 +46,6 @@ export class AuthController {
     try {
       const result = await AuthService.login(req.body as ILoginUserDTO);
 
-      // Set session token in HTTP-Only cookie
-      res.cookie('access_token', result.token, {
-        httpOnly: true,
-        secure: true, // Always secure for SameSite=None
-        sameSite: 'none',
-        path: '/',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
-
-      // Set role hint (NON-HttpOnly) for Middleware/Frontend routing
-      res.cookie('user_role', result.user.role, {
-        httpOnly: false, // Accessible by JS/Middleware
-        secure: true,
-        sameSite: 'none',
-        path: '/',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
-
-      // Set session hint (NON-HttpOnly) for API optimization
-      res.cookie('has_session', 'true', {
-        httpOnly: false, // Accessible by JS
-        secure: true,
-        sameSite: 'none',
-        path: '/',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
-
       sendResponse<IAuthResponse>(res, {
         statusCode: 200,
         success: true,
