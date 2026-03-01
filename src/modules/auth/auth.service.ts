@@ -108,7 +108,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new AppError('Invalid email or password', 401);
+      throw new AppError('Invalid email or password', 404);
     }
 
     if (!user.isVerified) {
@@ -118,7 +118,7 @@ export class AuthService {
     // Verify password
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
-      throw new AppError('Invalid email or password', 401);
+      throw new AppError('Invalid email or password', 403);
     }
 
     // Generate JWTs

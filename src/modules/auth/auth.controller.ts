@@ -103,10 +103,18 @@ export class AuthController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      res.clearCookie('access_token');
-      res.clearCookie('refresh_token');
-      res.clearCookie('user_role');
-      res.clearCookie('has_session');
+      const cookieOptions = {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none' as const,
+        path: '/',
+      };
+
+      res.clearCookie('access_token', cookieOptions);
+      res.clearCookie('refresh_token', cookieOptions);
+      res.clearCookie('user_role', { ...cookieOptions, httpOnly: false });
+      res.clearCookie('has_session', { ...cookieOptions, httpOnly: false });
+
       sendResponse(res, {
         statusCode: 200,
         success: true,
