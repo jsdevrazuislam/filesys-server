@@ -160,8 +160,8 @@ export class AuthService {
       'Password Reset Request',
       user.email,
       user.name,
-      { resetToken, user_name: user.name },
-      2, // Assume templateId 2 is for reset
+      { resetToken, user_name: user.name, CLIENT_URL: env.CLIENT_URL },
+      22,
     );
   }
 
