@@ -4,6 +4,7 @@ import { env } from '../../config';
 import prisma from '../../config/db';
 import { AppError } from '../../utils/AppError';
 import logger from '../../utils/logger';
+import { UserService } from '../user/user.service';
 
 const stripe = new Stripe(env.STRIPE_SECRET_KEY);
 
@@ -112,6 +113,11 @@ export class PaymentService {
         await this.handleSubscriptionDeleted(subscription);
         break;
       }
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription;
+        await this.handleSubscriptionUpdated(subscription);
+        break;
+      }
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
         await this.handlePaymentFailed(invoice);
@@ -120,6 +126,82 @@ export class PaymentService {
       // Add more events as needed
       default:
         logger.info(`Unhandled event type ${event.type}`);
+    }
+  }
+
+  private static async handleSubscriptionUpdated(
+    subscription: Stripe.Subscription,
+  ) {
+    const userId = subscription.metadata?.userId;
+    const packageId = subscription.metadata?.packageId;
+    const stripePriceId = subscription.items.data[0].price.id;
+
+    if (!userId) return;
+
+    // Resolve packageId if missing from metadata
+    let finalPackageId = packageId;
+    if (!finalPackageId) {
+      const pkg = await prisma.subscriptionPackage.findUnique({
+        where: { stripePriceId },
+      });
+      if (pkg) finalPackageId = pkg.id;
+    }
+
+    if (!finalPackageId) return;
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Deactivate other active subscriptions for this user
+      await tx.userSubscriptionHistory.updateMany({
+        where: {
+          userId,
+          isActive: true,
+          NOT: { stripeSubscriptionId: subscription.id },
+        },
+        data: { isActive: false, endDate: new Date() },
+      });
+
+      // 2. Update the current subscription record
+      const existing = await tx.userSubscriptionHistory.findUnique({
+        where: { stripeSubscriptionId: subscription.id },
+      });
+
+      if (existing) {
+        await tx.userSubscriptionHistory.update({
+          where: { id: existing.id },
+          data: {
+            packageId: finalPackageId,
+            paymentStatus:
+              subscription.status === 'active' ? 'active' : 'pending',
+            isActive: ['active', 'trialing'].includes(subscription.status),
+          },
+        });
+      } else {
+        // Fallback: Create if it doesn't exist (unlikely but possible if webhook order is weird)
+        await tx.userSubscriptionHistory.create({
+          data: {
+            userId,
+            packageId: finalPackageId,
+            stripeSubscriptionId: subscription.id,
+            paymentStatus: 'active',
+            isActive: true,
+            startDate: new Date(),
+          },
+        });
+      }
+    });
+
+    // Proactive check for limit violations after update (Robustness)
+    try {
+      const stats = await UserService.getUserStats(userId);
+      if (stats.isLimitExceeded) {
+        logger.warn(
+          `User ${userId} exceeded limits after plan update to ${stats.planName}. Limits: ${stats.exceededLimits.join(', ')}`,
+        );
+      }
+    } catch (_err) {
+      logger.error(
+        `Error checking limits after plan update for user ${userId}`,
+      );
     }
   }
 

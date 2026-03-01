@@ -112,7 +112,7 @@ export class AuthService {
     }
 
     if (!user.isVerified) {
-      throw new AppError('Please verify your email to login', 401);
+      throw new AppError('Please verify your email to login', 403);
     }
 
     // Verify password

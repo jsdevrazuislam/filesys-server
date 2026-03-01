@@ -20,6 +20,13 @@ export class FileService {
     data: ISignedUrlDTO,
     allowedTypes: string[],
   ): Promise<ISignedUrlResponse> {
+    // Service-Layer Enforcement (Second line of defense)
+    await this.checkLimits(userId, {
+      size: data.fileSize,
+      mimeType: data.fileType,
+      folderId: data.folderId,
+    });
+
     const timestamp = Math.round(new Date().getTime() / 1000);
 
     // Normalize publicId to include the folder prefix for consistent DB storage
@@ -70,6 +77,13 @@ export class FileService {
       folderId?: string | null;
     },
   ): Promise<File> {
+    // Service-Layer Enforcement (Final check before DB write)
+    await this.checkLimits(userId, {
+      size: data.size,
+      mimeType: data.mimeType,
+      folderId: data.folderId,
+    });
+
     let s3Key = data.s3Key;
     const folderPrefix = 'saas_file_system';
 
@@ -88,6 +102,80 @@ export class FileService {
         s3Key: s3Key,
       },
     });
+  }
+
+  /**
+   * Internal limit enforcement logic.
+   * Can be used as a second line of defense.
+   */
+  private static async checkLimits(
+    userId: string,
+    data: { size: number; mimeType: string; folderId?: string | null },
+  ) {
+    const subscription = await prisma.userSubscriptionHistory.findFirst({
+      where: { userId, isActive: true },
+      include: { package: true },
+      orderBy: { startDate: 'desc' },
+    });
+
+    if (!subscription) {
+      throw new AppError('No active subscription found.', 403);
+    }
+
+    const pkg = subscription.package;
+
+    // 1. File Size Check
+    if (BigInt(data.size) > pkg.maxFileSize) {
+      throw new AppError(
+        `File size exceeds limit (${Number(pkg.maxFileSize) / (1024 * 1024)}MB).`,
+        403,
+      );
+    }
+
+    // 2. File Type Check
+    const isAllowed = pkg.allowedTypes.some((type) => {
+      const allowed = type.trim();
+      if (allowed === '*/*' || allowed === data.mimeType) return true;
+      if (allowed.endsWith('/*')) {
+        return data.mimeType.startsWith(allowed.replace('/*', ''));
+      }
+      return false;
+    });
+
+    if (!isAllowed) {
+      throw new AppError(`File type ${data.mimeType} is not allowed.`, 403);
+    }
+
+    // 3. Storage & Counts (Optimized to single query)
+    const stats = await prisma.file.aggregate({
+      where: { userId },
+      _count: { id: true },
+      _sum: { size: true },
+    });
+
+    const fileCount = stats._count.id;
+    const usedStorage = stats._sum.size || BigInt(0);
+
+    const folderCheck = data.folderId
+      ? prisma.file.count({ where: { folderId: data.folderId } })
+      : Promise.resolve(0);
+
+    const filesInFolder = await folderCheck;
+
+    // Check total files
+    if (fileCount >= pkg.totalFiles) {
+      throw new AppError('Total file limit reached for your plan.', 403);
+    }
+
+    // Check storage quota
+    if (usedStorage + BigInt(data.size) > pkg.storageLimit) {
+      throw new AppError('Storage quota exceeded for your plan.', 403);
+    }
+
+    // Check files per folder
+    if (data.folderId && filesInFolder >= pkg.filesPerFolder) {
+      throw new AppError('Folder file limit reached.', 403);
+    }
   }
 
   /**

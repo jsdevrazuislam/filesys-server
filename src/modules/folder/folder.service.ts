@@ -2,6 +2,8 @@ import { Folder } from '@prisma/client';
 
 import prisma from '../../config/db';
 import { AppError } from '../../utils/AppError';
+import logger from '../../utils/logger';
+import { FileService } from '../file/file.service';
 import { ICreateFolderDTO, IFolderResponse } from './folder.interface';
 
 /**
@@ -85,8 +87,57 @@ export class FolderService {
     if (!folder || folder.userId !== userId)
       throw new AppError('Folder not found', 404);
 
-    await prisma.file.deleteMany({ where: { folderId } });
-    await prisma.folder.delete({ where: { id: folderId } });
+    // 1. Get all folder IDs in the tree (recursive)
+    const allFolderIds = await this.getRecursiveFolderIds(folderId);
+    allFolderIds.push(folderId);
+
+    // 2. Find all files in these folders
+    const files = await prisma.file.findMany({
+      where: { folderId: { in: allFolderIds } },
+    });
+
+    // 3. Delete each file from Cloudinary (and DB)
+    // We use a loop to ensure each Cloudinary resource is destroyed
+    for (const file of files) {
+      try {
+        await FileService.deleteFile(userId, file.id);
+      } catch (error) {
+        // Log error but continue to ensure dynamic DB consistency
+        logger.error(
+          `Failed to delete file ${file.id} during folder delete`,
+          error,
+        );
+      }
+    }
+
+    // 4. Delete all folders in the tree
+    // We filter by userId as an extra safety measure
+    await prisma.folder.deleteMany({
+      where: {
+        id: { in: allFolderIds },
+        userId,
+      },
+    });
+  }
+
+  /**
+   * Helper to get all sub-folder IDs recursively.
+   */
+  private static async getRecursiveFolderIds(
+    folderId: string,
+  ): Promise<string[]> {
+    const children = await prisma.folder.findMany({
+      where: { parentId: folderId },
+      select: { id: true },
+    });
+
+    let ids = children.map((c) => c.id);
+    for (const childId of ids) {
+      const subIds = await this.getRecursiveFolderIds(childId);
+      ids = [...ids, ...subIds];
+    }
+
+    return ids;
   }
 
   static async listFolders(

@@ -113,9 +113,16 @@ export const checkSubscriptionLimit = (action: ActionType) => {
           }
 
           if (mimeType) {
-            const isAllowed = pkg.allowedTypes.some((group) => {
-              const types = group.split(',').map((s) => s.trim().toLowerCase());
-              return types.includes(mimeType.toLowerCase());
+            const isAllowed = pkg.allowedTypes.some((type) => {
+              const allowed = type.trim().toLowerCase();
+              if (allowed === '*/*' || allowed === mimeType.toLowerCase())
+                return true;
+              if (allowed.endsWith('/*')) {
+                return mimeType
+                  .toLowerCase()
+                  .startsWith(allowed.replace('/*', ''));
+              }
+              return false;
             });
 
             if (!isAllowed) {
@@ -125,13 +132,19 @@ export const checkSubscriptionLimit = (action: ActionType) => {
               );
             }
           }
-          // 2. Check total file limits and storage quota
-          const allFiles = await prisma.file.findMany({
+
+          // 2. Check total file limits and storage quota (Optimized to single query)
+          const stats = await prisma.file.aggregate({
             where: { userId: req.user.id },
-            select: { size: true },
+            _count: { id: true },
+            _sum: { size: true },
           });
 
-          if (allFiles.length >= pkg.totalFiles) {
+          const fileCount = stats._count.id;
+          const usedStorage = stats._sum.size || BigInt(0);
+          const newFileSize = fileSize ? BigInt(fileSize) : BigInt(0);
+
+          if (fileCount >= pkg.totalFiles) {
             throw new AppError(
               'You have reached the maximum total files limit for your plan.',
               403,
@@ -139,13 +152,7 @@ export const checkSubscriptionLimit = (action: ActionType) => {
           }
 
           // Check total storage quota limit
-          const currentStorage = allFiles.reduce(
-            (acc, file) => acc + BigInt(file.size),
-            BigInt(0),
-          );
-          const newFileSize = fileSize ? BigInt(fileSize) : BigInt(0);
-
-          if (currentStorage + newFileSize > pkg.storageLimit) {
+          if (usedStorage + newFileSize > pkg.storageLimit) {
             throw new AppError(
               `Storage capacity exceeded. Your plan allows up to ${
                 Number(pkg.storageLimit) / (1024 * 1024)
@@ -153,6 +160,7 @@ export const checkSubscriptionLimit = (action: ActionType) => {
               403,
             );
           }
+
           // 3. Check folder file limits if uploading to a folder
           if (folderId) {
             const filesInFolder = await prisma.file.count({
@@ -187,9 +195,13 @@ export const checkSubscriptionLimit = (action: ActionType) => {
           if (parentId) {
             const parentFolder = await prisma.folder.findUnique({
               where: { id: parentId },
+              select: { depthLevel: true, userId: true },
             });
             if (!parentFolder) {
               throw new AppError('Parent folder not found.', 404);
+            }
+            if (parentFolder.userId !== req.user.id) {
+              throw new AppError('Access denied.', 403);
             }
 
             if (parentFolder.depthLevel >= pkg.maxNesting) {

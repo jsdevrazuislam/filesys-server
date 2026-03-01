@@ -9,6 +9,8 @@ export interface IUserStats {
   storageUsagePercentage: number;
   planName: string;
   allowedTypes: string[];
+  isLimitExceeded: boolean;
+  exceededLimits: string[];
 }
 
 export class UserService {
@@ -19,6 +21,7 @@ export class UserService {
         subscriptionHistory: {
           where: { isActive: true },
           include: { package: true },
+          orderBy: { startDate: 'desc' },
           take: 1,
         },
       },
@@ -29,21 +32,38 @@ export class UserService {
     const activeSub = user.subscriptionHistory[0];
     const pkg = activeSub?.package;
 
-    const totalFiles = await prisma.file.count({ where: { userId } });
-    const totalFolders = await prisma.folder.count({ where: { userId } });
+    // Optimized aggregation
+    const [stats, totalFolders] = await Promise.all([
+      prisma.file.aggregate({
+        where: { userId },
+        _count: { id: true },
+        _sum: { size: true },
+      }),
+      prisma.folder.count({ where: { userId } }),
+    ]);
 
-    const files = await prisma.file.findMany({
-      where: { userId },
-      select: { size: true },
-    });
-
-    const usedStorage = files.reduce((acc, file) => acc + file.size, BigInt(0));
+    const totalFiles = stats._count.id;
+    const usedStorage = stats._sum.size || BigInt(0);
     const maxStorage = pkg?.storageLimit || BigInt(0);
 
     const storageUsagePercentage =
       maxStorage > BigInt(0)
         ? Number((usedStorage * BigInt(100)) / maxStorage)
         : 0;
+
+    // Detect exceeded limits
+    const exceededLimits: string[] = [];
+    if (pkg) {
+      if (pkg.totalFiles !== -1 && totalFiles > pkg.totalFiles) {
+        exceededLimits.push('files');
+      }
+      if (pkg.maxFolders !== -1 && totalFolders > pkg.maxFolders) {
+        exceededLimits.push('folders');
+      }
+      if (pkg.storageLimit !== BigInt(-1) && usedStorage > pkg.storageLimit) {
+        exceededLimits.push('storage');
+      }
+    }
 
     return {
       totalFiles,
@@ -53,6 +73,8 @@ export class UserService {
       storageUsagePercentage,
       planName: pkg?.name || 'No Plan',
       allowedTypes: pkg?.allowedTypes || [],
+      isLimitExceeded: exceededLimits.length > 0,
+      exceededLimits,
     };
   }
 }
