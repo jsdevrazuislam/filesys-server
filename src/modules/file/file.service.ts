@@ -133,14 +133,19 @@ export class FileService {
     }
 
     // 2. File Type Check
-    const isAllowed = pkg.allowedTypes.some((type) => {
-      const allowed = type.trim();
-      if (allowed === '*/*' || allowed === data.mimeType) return true;
-      if (allowed.endsWith('/*')) {
-        return data.mimeType.startsWith(allowed.replace('/*', ''));
-      }
-      return false;
-    });
+    const isAllowed = pkg.allowedTypes
+      .flatMap((type) => type.split(','))
+      .some((type) => {
+        const allowed = type.trim().toLowerCase();
+        if (allowed === '*/*' || allowed === data.mimeType.toLowerCase())
+          return true;
+        if (allowed.endsWith('/*')) {
+          return data.mimeType
+            .toLowerCase()
+            .startsWith(allowed.replace('/*', ''));
+        }
+        return false;
+      });
 
     if (!isAllowed) {
       throw new AppError(`File type ${data.mimeType} is not allowed.`, 403);

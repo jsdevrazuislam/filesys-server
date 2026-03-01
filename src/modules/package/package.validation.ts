@@ -6,9 +6,7 @@ export const createPackageSchema = z.object({
     maxFolders: z.coerce.number().int().positive(),
     maxNesting: z.coerce.number().int().positive(),
     allowedTypes: z.array(
-      z
-        .string()
-        .regex(/^[a-z0-9]+\/[a-z0-9.*+-]+$/i, 'Invalid mime type format'),
+      z.string().regex(/^[a-z0-9.*+,\-\/\s]+$/i, 'Invalid mime type format'),
     ),
     maxFileSize: z.coerce.number().positive(), // in MB (we'll convert to bytes in service)
     storageLimit: z.coerce.number().nonnegative(), // in MB
@@ -25,9 +23,7 @@ export const updatePackageSchema = z.object({
     maxNesting: z.coerce.number().int().positive().optional(),
     allowedTypes: z
       .array(
-        z
-          .string()
-          .regex(/^[a-z0-9]+\/[a-z0-9.*+-]+$/i, 'Invalid mime type format'),
+        z.string().regex(/^[a-z0-9.*+,\-\/\s]+$/i, 'Invalid mime type format'),
       )
       .optional(),
     maxFileSize: z.coerce.number().positive().optional(),

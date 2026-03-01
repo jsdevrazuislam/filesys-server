@@ -113,17 +113,19 @@ export const checkSubscriptionLimit = (action: ActionType) => {
           }
 
           if (mimeType) {
-            const isAllowed = pkg.allowedTypes.some((type) => {
-              const allowed = type.trim().toLowerCase();
-              if (allowed === '*/*' || allowed === mimeType.toLowerCase())
-                return true;
-              if (allowed.endsWith('/*')) {
-                return mimeType
-                  .toLowerCase()
-                  .startsWith(allowed.replace('/*', ''));
-              }
-              return false;
-            });
+            const isAllowed = pkg.allowedTypes
+              .flatMap((type) => type.split(','))
+              .some((type) => {
+                const allowed = type.trim().toLowerCase();
+                if (allowed === '*/*' || allowed === mimeType.toLowerCase())
+                  return true;
+                if (allowed.endsWith('/*')) {
+                  return mimeType
+                    .toLowerCase()
+                    .startsWith(allowed.replace('/*', ''));
+                }
+                return false;
+              });
 
             if (!isAllowed) {
               throw new AppError(

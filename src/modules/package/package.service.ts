@@ -21,9 +21,16 @@ export class PackageService {
     const maxFileSizeInBytes = BigInt(data.maxFileSize) * BigInt(1024 * 1024);
     const storageLimitInBytes = BigInt(data.storageLimit) * BigInt(1024 * 1024);
 
+    // Normalize allowedTypes: flatten comma-separated strings and remove duplicates
+    const normalizedAllowedTypes = (data.allowedTypes || [])
+      .flatMap((t) => t.split(','))
+      .map((t) => t.trim().toLowerCase())
+      .filter((t, i, arr) => t && arr.indexOf(t) === i);
+
     return await prisma.subscriptionPackage.create({
       data: {
         ...data,
+        allowedTypes: normalizedAllowedTypes,
         maxFileSize: maxFileSizeInBytes,
         storageLimit: storageLimitInBytes,
       },
@@ -62,6 +69,12 @@ export class PackageService {
     }
     if (storageLimit !== undefined) {
       updateData.storageLimit = BigInt(storageLimit) * BigInt(1024 * 1024);
+    }
+    if (data.allowedTypes !== undefined) {
+      updateData.allowedTypes = data.allowedTypes
+        .flatMap((t) => t.split(','))
+        .map((t) => t.trim().toLowerCase())
+        .filter((t, i, arr) => t && arr.indexOf(t) === i);
     }
 
     return await prisma.subscriptionPackage.update({
