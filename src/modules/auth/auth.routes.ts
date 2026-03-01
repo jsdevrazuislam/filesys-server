@@ -65,18 +65,6 @@ router.post('/login', validateRequest(loginSchema), AuthController.login);
 
 /**
  * @openapi
- * /auth/logout:
- *   post:
- *     tags: [Auth]
- *     summary: Logout user (clears session cookie)
- *     responses:
- *       200:
- *         description: Logged out successfully
- */
-router.post('/logout', AuthController.logout);
-
-/**
- * @openapi
  * /auth/reset-password:
  *   post:
  *     tags: [Auth]

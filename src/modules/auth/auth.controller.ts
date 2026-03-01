@@ -95,37 +95,6 @@ export class AuthController {
   };
 
   /**
-   * Handle user logout.
-   */
-  static logout = async (
-    _req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
-      const cookieOptions = {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none' as const,
-        path: '/',
-      };
-
-      res.clearCookie('access_token', cookieOptions);
-      res.clearCookie('refresh_token', cookieOptions);
-      res.clearCookie('user_role', { ...cookieOptions, httpOnly: false });
-      res.clearCookie('has_session', { ...cookieOptions, httpOnly: false });
-
-      sendResponse(res, {
-        statusCode: 200,
-        success: true,
-        message: 'Logged out successfully',
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  /**
    * Handle token refresh.
    */
   static refreshToken = async (
